@@ -1,9 +1,7 @@
 package types
 
 import "encoding/json"
-import (
-	fflow "github.com/TIBCOSoftware/flogo-lib/flow/flowdef"
-)
+import "github.com/TIBCOSoftware/flogo-lib/core/action"
 
 type Microgateway struct {
 	Gateway Gateway `json:"gateway"`
@@ -38,23 +36,7 @@ type EventHandler struct {
 	Description string          `json:"description,omitempty"`
 	Reference   string          `json:"reference,omitempty"`
 	Params      json.RawMessage `json:"params,omitempty"`
-	Actions     []Action        `json:"actions"`
-	Links       []Link          `json:"links,omitempty"`
-}
-
-type Action struct {
-	ID          int             `json:"id"`
-	Name        string          `json:"name"`
-	Description string          `json:"description,omitempty"`
-	Type        string          `json:"type"`
-	Inputs      json.RawMessage `json:"inputs,omitempty"`
-	Outputs     json.RawMessage `json:"outputs,omitempty"`
-}
-
-type Link struct {
-	From string `json:"from"`
-	To   string `json:"to"`
-	If   string `json:"if,omitempty"`
+	Definition  json.RawMessage `json:"definition,omitempty"`
 }
 
 type EventLink struct {
@@ -68,12 +50,6 @@ type Path struct {
 	Handler string `json:"handler"`
 }
 
-type FlowData struct {
-	Flow Flow `json:"flow"`
-}
-
-type Flow struct {
-	Type int `json:"type"`
-	Attributes []string `json:"attributes,omitempty"`
-	RootTask *fflow.TaskRep `json:"rootTask"`
+type FlogoAction struct {
+	action.Config
 }

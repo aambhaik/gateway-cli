@@ -5,19 +5,16 @@ import (
 	"strings"
 
 	"fmt"
-	"github.com/TIBCOSoftware/flogo-lib/core/data"
+	fapi "github.com/TIBCOSoftware/flogo-cli/app"
+	"github.com/TIBCOSoftware/flogo-lib/app"
+	factions "github.com/TIBCOSoftware/flogo-lib/core/action"
 	ftrigger "github.com/TIBCOSoftware/flogo-lib/core/trigger"
-	fflow "github.com/TIBCOSoftware/flogo-lib/flow/flowdef"
 	"github.com/aambhaik/gateway-cli/env"
 	"github.com/aambhaik/gateway-cli/types"
 	"github.com/aambhaik/gateway-cli/util"
-	"errors"
-	factions "github.com/TIBCOSoftware/flogo-lib/core/action"
-	"github.com/TIBCOSoftware/flogo-lib/app"
-	fapi "github.com/TIBCOSoftware/flogo-cli/app"
 )
 
-var flowActivitiesMap map[string] (map[string] int)
+var flowActivitiesMap map[string](map[string]int)
 
 // CreateGateway creates a gateway application from the specified json gateway descriptor
 func CreateGateway(env env.Project, gatewayJson string, appDir string, appName string, vendorDir string) error {
@@ -71,12 +68,12 @@ func CreateGateway(env env.Project, gatewayJson string, appDir string, appName s
 	flogoAppTriggers := []*ftrigger.Config{}
 	flogoAppActions := []*factions.Config{}
 
-	triggerNamedMap := make(map[string] types.Trigger)
+	triggerNamedMap := make(map[string]types.Trigger)
 	for _, trigger := range descriptor.Gateway.Triggers {
 		triggerNamedMap[trigger.Name] = trigger
 	}
 
-	handlerNamedMap := make(map[string] types.EventHandler)
+	handlerNamedMap := make(map[string]types.EventHandler)
 	for _, evtHandler := range descriptor.Gateway.EventHandlers {
 		handlerNamedMap[evtHandler.Name] = evtHandler
 	}
@@ -101,34 +98,17 @@ func CreateGateway(env env.Project, gatewayJson string, appDir string, appName s
 				return err
 			}
 
-			var flow = types.Flow{
-				Type: 1,
-				RootTask: flogoAction,
-			}
-
-			var flowData = types.FlowData{
-				Flow: flow,
-			}
-
-			data, err := json.Marshal(flowData)
-
-			actionObject := factions.Config{
-				Id: handlerName,
-				Ref: "github.com/TIBCOSoftware/flogo-contrib/action/flow",
-				Data: data,
-			}
-
-			flogoAppActions = append(flogoAppActions, &actionObject)
+			flogoAppActions = append(flogoAppActions, flogoAction)
 		}
 	}
 
 	flogoApp := app.Config{
-		Name: descriptor.Gateway.Name,
-		Type: "flogo:app",
-		Version: descriptor.Gateway.Version,
-		Description:descriptor.Gateway.Description,
-		Triggers: flogoAppTriggers,
-		Actions: flogoAppActions,
+		Name:        descriptor.Gateway.Name,
+		Type:        "flogo:app",
+		Version:     descriptor.Gateway.Version,
+		Description: descriptor.Gateway.Description,
+		Triggers:    flogoAppTriggers,
+		Actions:     flogoAppActions,
 	}
 
 	//create flogo PP JSON
@@ -189,100 +169,16 @@ func CreateFlogoTrigger(trigger types.Trigger, handler types.EventHandler) (*ftr
 	return &flogoTrigger, nil
 }
 
-func CreateFlogoFlowAction(handler types.EventHandler) (*fflow.TaskRep, error) {
-	var fflowAction fflow.TaskRep
-
-	fflowAction.Name = handler.Name
-
-	var flowTasks []*fflow.TaskRep
-	var flowLinks []*fflow.LinkRep
-
-	for _, action := range handler.Actions {
-		flowTask, err := CreateFlogoActivity(action)
-		if err != nil {
-			return nil, err
-		}
-
-		flowTasks = append(flowTasks, flowTask)
-	}
-
-	for _, link := range handler.Links {
-		flowLink, err := CreateFlogoActionLink(handler.Name, link)
-		if err != nil {
-			return nil, err
-		}
-		flowLinks = append(flowLinks, flowLink)
-	}
-
-	rootTask := fflow.TaskRep{
-		ID: 1,
-		TypeID: 1,
-		Tasks: flowTasks,
-		Links: flowLinks,
-	}
-
-	return &rootTask, nil
-}
-
-func CreateFlogoActivity(action types.Action) (*fflow.TaskRep, error) {
-	var flowTask fflow.TaskRep
-	flowTask.Name = action.Name
-	flowTask.ID = action.ID
-	flowTask.ActivityRef = action.Type
-	var actionInputs interface{}
-	if err := json.Unmarshal([]byte(action.Inputs), &actionInputs); err != nil {
-		panic(err)
-	}
-
-	actionInputsMap := actionInputs.(map[string]interface{})
-
-	var taskAttributes []*data.Attribute
-
-	for inputName := range actionInputsMap {
-		inputValue := data.GetMapValue(actionInputsMap, inputName)
-		inputType, err := data.GetType(inputValue)
-		if err != nil {
-			return nil, err
-		}
-
-		taskAttributes = append(taskAttributes,
-			&data.Attribute{
-				Name:  inputName,
-				Type:  inputType,
-				Value: inputValue,
-			})
-	}
-	flowTask.Attributes = taskAttributes
-
-	return &flowTask, nil
-}
-
-func CreateFlogoActionLink(flowName string, link types.Link) (*fflow.LinkRep, error) {
-	var flowLink fflow.LinkRep
-
-	flowActionIdMap := flowActivitiesMap[flowName];
-	if flowActionIdMap == nil {
-		err := errors.New("invalid flow name input")
+func CreateFlogoFlowAction(handler types.EventHandler) (*factions.Config, error) {
+	flogoAction := types.FlogoAction{}
+	err := json.Unmarshal([]byte(handler.Definition), &flogoAction)
+	if err != nil {
 		return nil, err
 	}
-
-	fromId := flowActionIdMap[link.From]
-	if &fromId == nil {
-		err := errors.New("invalid action name in the link")
-		return nil, err
+	action := factions.Config{
+		Id:   handler.Name,
+		Data: flogoAction.Data,
+		Ref:  flogoAction.Ref,
 	}
-	flowLink.FromID = fromId
-
-	toId := flowActionIdMap[link.To]
-	if &toId == nil {
-		err := errors.New("invalid action name in the link")
-		return nil, err
-	}
-	flowLink.ToID = toId
-
-	flowLink.Value = link.If
-	flowLink.Type = 1
-
-	return &flowLink, nil
+	return &action, nil
 }
-

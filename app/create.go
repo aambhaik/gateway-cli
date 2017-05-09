@@ -123,7 +123,7 @@ func createMicroGatewayModel() (types.Microgateway, error) {
 					Settings: json.RawMessage(`{
 					  "port": "9096",
 					  "method": "GET",
-					  "path": "/hello"
+					  "path": "/v1/mg/hello"
 					}`),
 				},
 			},
@@ -131,28 +131,142 @@ func createMicroGatewayModel() (types.Microgateway, error) {
 				{
 					Name:        "get_user_success_handler",
 					Description: "Handle the user access",
-					Actions: []types.Action{
-						{
-							ID:          1,
-							Name:        "log",
-							Description: "Log the inbound request",
-							Type:        "github.com/TIBCOSoftware/flogo-contrib/activity/log",
-							Inputs: json.RawMessage(`{
-								"message": "Received new request"
-							}`),
-						},
-						{
-							ID:          2,
-							Name:        "reply",
-							Description: "Simple Reply Activity",
-							Type:        "github.com/TIBCOSoftware/flogo-contrib/activity/reply",
-							Inputs: json.RawMessage(`{
-								"code": 200,
-								"data": "Hello Mashling!"
-							}`),
-						},
-					},
-					Links: []types.Link{},
+					Params: json.RawMessage(`{
+                    				"internalUrl": "hello"
+					}`),
+					Definition: json.RawMessage(`{
+					                    "data": {
+								"flow": {
+								    "type": 1,
+								    "attributes": [],
+								    "rootTask": {
+									"id": 1,
+									"type": 1,
+									"tasks": [
+									    {
+										"id": 2,
+										"name": "Invoke REST Service",
+										"description": "Simple REST Activity",
+										"type": 1,
+										"activityType": "tibco-rest",
+										"activityRef": "github.com/TIBCOSoftware/flogo-contrib/activity/rest",
+										"attributes": [
+										    {
+											"name": "method",
+											"value": "GET",
+											"required": true,
+											"type": "string"
+										    },
+										    {
+											"name": "uri",
+											"value": "{internalUrl}",
+											"required": true,
+											"type": "string"
+										    },
+										    {
+											"name": "pathParams",
+											"value": null,
+											"required": false,
+											"type": "params"
+										    },
+										    {
+											"name": "queryParams",
+											"value": null,
+											"required": false,
+											"type": "params"
+										    },
+										    {
+											"name": "content",
+											"value": null,
+											"required": false,
+											"type": "any"
+										    }
+										]
+									    },
+									    {
+										"id": 3,
+										"name": "Log Message",
+										"description": "Simple Log Activity",
+										"type": 1,
+										"activityType": "tibco-log",
+										"activityRef": "github.com/TIBCOSoftware/flogo-contrib/activity/log",
+										"attributes": [
+										    {
+											"name": "message",
+											"value": "",
+											"required": false,
+											"type": "string"
+										    },
+										    {
+											"name": "flowInfo",
+											"value": "false",
+											"required": false,
+											"type": "boolean"
+										    },
+										    {
+											"name": "addToFlow",
+											"value": "false",
+											"required": false,
+											"type": "boolean"
+										    }
+										]
+									    },
+									    {
+										"id": 4,
+										"name": "Reply To Trigger",
+										"description": "Simple Reply Activity",
+										"type": 1,
+										"activityType": "tibco-reply",
+										"activityRef": "github.com/TIBCOSoftware/flogo-contrib/activity/reply",
+										"attributes": [
+										    {
+											"name": "code",
+											"value": null,
+											"required": true,
+											"type": "integer"
+										    },
+										    {
+											"name": "data",
+											"value": null,
+											"required": false,
+											"type": "any"
+										    }
+										],
+										"inputMappings": [
+										    {
+											"type": 1,
+											"value": "{A2.result}.status",
+											"mapTo": "code"
+										    },
+										    {
+											"type": 1,
+											"value": "{A2.result}",
+											"mapTo": "data"
+										    }
+										]
+									    }
+									],
+									"links": [
+									    {
+										"id": 1,
+										"from": 2,
+										"to": 3,
+										"type": 0
+									    },
+									    {
+										"id": 2,
+										"from": 3,
+										"to": 4,
+										"type": 0
+									    }
+									],
+									"attributes": []
+								    }
+								}
+							    },
+							    "id": "get_user_success_handler",
+							    "ref": "github.com/TIBCOSoftware/flogo-contrib/action/flow"
+					}`),
 				},
 			},
 			EventLinks: []types.EventLink{
@@ -172,155 +286,155 @@ func createMicroGatewayModel() (types.Microgateway, error) {
 	return microGateway, nil
 }
 
-func createMicroGatewayModelKafka() (types.Microgateway, error) {
-
-	microGateway := types.Microgateway{
-		Gateway: types.Gateway{
-			Name:        "Test",
-			Version:     "1.0.0",
-			Description: "This is the first microgateway app",
-			Configurations: []types.Config{
-				{
-					Name:        "kafkaConfig",
-					Type:        "github.com/TIBCOSoftware/flogo-contrib/config/kafkaConfig",
-					Description: "Configuration for kafka cluster",
-					Settings: json.RawMessage(`{
-						"brokers": [
-						 "localhost:9092",
-						 "localhost:9093"
-						],
-						"userName": "admin",
-						"password": "admin"
-					}`),
-				},
-			},
-			Triggers: []types.Trigger{
-				{
-					Name:        "OrdersTrigger",
-					Description: "The trigger on 'orders' topic",
-					Type:        "github.com/TIBCOSoftware/flogo-contrib/trigger/kafkaConsumer",
-					Settings: json.RawMessage(`{
-					  "topic": "orders",
-					  "config": "${configurations.kafkaConfig}"
-					}`),
-				},
-			},
-			EventHandlers: []types.EventHandler{
-				{
-					Name:        "OrderSuccessHandler",
-					Description: "Handle the order processing",
-					Params: json.RawMessage(`{
-					  "time-span": "minute",
-					  "message": "${trigger.content}",
-					  "limit": 1001
-					}`),
-					Actions: []types.Action{
-						{
-							ID:          1,
-							Name:        "log",
-							Description: "Log the inbound request",
-							Type:        "github.com/TIBCOSoftware/flogo-contrib/activity/log",
-							Inputs: json.RawMessage(`{
-								"message": {
-									"value": "${inputs.message}",
-									"type": "string"
-							    	}
-							}`),
-						},
-						{
-							ID:          2,
-							Name:        "limit",
-							Description: "Limit the traffic to endpoint",
-							Type:        "github.com/TIBCOSoftware/flogo-contrib/activity/RateLimiter",
-							Inputs: json.RawMessage(`{
-								"operation": "POST http: //localhost:9090/users",
-								"limit": "${inputs.limit}",
-								"time-span": "${inputs.time-span}"
-							}`),
-							Outputs: json.RawMessage(`{
-								"operation": {
-									"type": "string"
-								},
-								"throttled": {
-									"type": "boolean"
-								},
-								"error": {
-									"type": "error"
-								}
-							}`),
-						},
-						{
-							ID:          3,
-							Name:        "invoke",
-							Description: "Invoke the endpoint",
-							Type:        "github.com/TIBCOSoftware/flogo-contrib/activity/RESTInvoke",
-							Inputs: json.RawMessage(`{
-								"operation": "${action.limit.operation}",
-								"content": "${inputs.message}"
-							}`),
-							Outputs: json.RawMessage(`{
-								"status": {
-									"type": "string"
-								},
-								"message": {
-									"type": "json"
-								},
-								"error": {
-									"type": "error"
-								}
-							}`),
-						},
-						{
-							ID:          4,
-							Name:        "error",
-							Description: "Error handling",
-							Type:        "github.com/TIBCOSoftware/flogo-contrib/activity/error",
-							Inputs: json.RawMessage(`{
-								"message": "No more than ${inputs.limit} requests allowed per ${inputs.time-span}"
-							}`),
-						},
-					},
-					Links: []types.Link{
-						{
-							From: "limit",
-							To:   "error",
-							If:   "${limit.throttled} == true",
-						},
-						{
-							From: "limit",
-							To:   "invoke",
-							If:   "${limit.throttled} == false",
-						},
-					},
-				},
-				{
-					Name:        "OrderErrorHandler",
-					Description: "Handle the order error processing",
-					Reference:   "github.com/TIBCOSoftware/mashling/flows/ConsoleErrorHandler/flow.json",
-					Params: json.RawMessage(`{
-					  "message": "${trigger.content}"
-					}`),
-				},
-			},
-			EventLinks: []types.EventLink{
-				{
-					Trigger: "OrdersTrigger",
-					SuccessPaths: []types.Path{
-						{
-							If:      "${trigger.content.Country == \"USA\"}",
-							Handler: "OrderSuccessHandler",
-						},
-					},
-					ErrorPaths: []types.Path{
-						{
-							If:      "${trigger.content.Country == undefined}",
-							Handler: "OrderErrorHandler",
-						},
-					},
-				},
-			},
-		},
-	}
-
-	return microGateway, nil
-}
+//func createMicroGatewayModelKafka() (types.Microgateway, error) {
+//
+//	microGateway := types.Microgateway{
+//		Gateway: types.Gateway{
+//			Name:        "Test",
+//			Version:     "1.0.0",
+//			Description: "This is the first microgateway app",
+//			Configurations: []types.Config{
+//				{
+//					Name:        "kafkaConfig",
+//					Type:        "github.com/TIBCOSoftware/flogo-contrib/config/kafkaConfig",
+//					Description: "Configuration for kafka cluster",
+//					Settings: json.RawMessage(`{
+//						"brokers": [
+//						 "localhost:9092",
+//						 "localhost:9093"
+//						],
+//						"userName": "admin",
+//						"password": "admin"
+//					}`),
+//				},
+//			},
+//			Triggers: []types.Trigger{
+//				{
+//					Name:        "OrdersTrigger",
+//					Description: "The trigger on 'orders' topic",
+//					Type:        "github.com/TIBCOSoftware/flogo-contrib/trigger/kafkaConsumer",
+//					Settings: json.RawMessage(`{
+//					  "topic": "orders",
+//					  "config": "${configurations.kafkaConfig}"
+//					}`),
+//				},
+//			},
+//			EventHandlers: []types.EventHandler{
+//				{
+//					Name:        "OrderSuccessHandler",
+//					Description: "Handle the order processing",
+//					Params: json.RawMessage(`{
+//					  "time-span": "minute",
+//					  "message": "${trigger.content}",
+//					  "limit": 1001
+//					}`),
+//					Actions: []types.Action{
+//						{
+//							ID:          1,
+//							Name:        "log",
+//							Description: "Log the inbound request",
+//							Type:        "github.com/TIBCOSoftware/flogo-contrib/activity/log",
+//							Inputs: json.RawMessage(`{
+//								"message": {
+//									"value": "${inputs.message}",
+//									"type": "string"
+//							    	}
+//							}`),
+//						},
+//						{
+//							ID:          2,
+//							Name:        "limit",
+//							Description: "Limit the traffic to endpoint",
+//							Type:        "github.com/TIBCOSoftware/flogo-contrib/activity/RateLimiter",
+//							Inputs: json.RawMessage(`{
+//								"operation": "POST http: //localhost:9090/users",
+//								"limit": "${inputs.limit}",
+//								"time-span": "${inputs.time-span}"
+//							}`),
+//							Outputs: json.RawMessage(`{
+//								"operation": {
+//									"type": "string"
+//								},
+//								"throttled": {
+//									"type": "boolean"
+//								},
+//								"error": {
+//									"type": "error"
+//								}
+//							}`),
+//						},
+//						{
+//							ID:          3,
+//							Name:        "invoke",
+//							Description: "Invoke the endpoint",
+//							Type:        "github.com/TIBCOSoftware/flogo-contrib/activity/RESTInvoke",
+//							Inputs: json.RawMessage(`{
+//								"operation": "${action.limit.operation}",
+//								"content": "${inputs.message}"
+//							}`),
+//							Outputs: json.RawMessage(`{
+//								"status": {
+//									"type": "string"
+//								},
+//								"message": {
+//									"type": "json"
+//								},
+//								"error": {
+//									"type": "error"
+//								}
+//							}`),
+//						},
+//						{
+//							ID:          4,
+//							Name:        "error",
+//							Description: "Error handling",
+//							Type:        "github.com/TIBCOSoftware/flogo-contrib/activity/error",
+//							Inputs: json.RawMessage(`{
+//								"message": "No more than ${inputs.limit} requests allowed per ${inputs.time-span}"
+//							}`),
+//						},
+//					},
+//					Links: []types.Link{
+//						{
+//							From: "limit",
+//							To:   "error",
+//							If:   "${limit.throttled} == true",
+//						},
+//						{
+//							From: "limit",
+//							To:   "invoke",
+//							If:   "${limit.throttled} == false",
+//						},
+//					},
+//				},
+//				{
+//					Name:        "OrderErrorHandler",
+//					Description: "Handle the order error processing",
+//					Reference:   "github.com/TIBCOSoftware/mashling/flows/ConsoleErrorHandler/flow.json",
+//					Params: json.RawMessage(`{
+//					  "message": "${trigger.content}"
+//					}`),
+//				},
+//			},
+//			EventLinks: []types.EventLink{
+//				{
+//					Trigger: "OrdersTrigger",
+//					SuccessPaths: []types.Path{
+//						{
+//							If:      "${trigger.content.Country == \"USA\"}",
+//							Handler: "OrderSuccessHandler",
+//						},
+//					},
+//					ErrorPaths: []types.Path{
+//						{
+//							If:      "${trigger.content.Country == undefined}",
+//							Handler: "OrderErrorHandler",
+//						},
+//					},
+//				},
+//			},
+//		},
+//	}
+//
+//	return microGateway, nil
+//}

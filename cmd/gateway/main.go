@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/TIBCOSoftware/gateway-cli/app"
-	"github.com/TIBCOSoftware/gateway-cli/cli"
+	"github.com/aambhaik/gateway-cli/app"
+	"github.com/aambhaik/gateway-cli/cli"
 )
 
 var (
