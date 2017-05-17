@@ -9,10 +9,7 @@
 				"type": "github.com/TIBCOSoftware/flogo-contrib/config/kafkaConfig",
 				"description": "Configuration for kafka cluster",
 				"settings": {
-					"brokers": [
-						"localhost:9092",
-						"localhost:9093"
-					],
+					"brokers": "localhost:9092",
 					"userName": "admin",
 					"password": "admin"
 				}
@@ -46,8 +43,7 @@
 				"reference": "github.com/TIBCOSoftware/mashling/flows/ConsoleErrorHandler/flow.json",
 				"params": {
 					"message": "${trigger.content}"
-				},
-				"actions": null
+				}
 			}
 		],
 		"event_links": [
